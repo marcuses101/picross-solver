@@ -1,9 +1,5 @@
-use game_board::*;
+use crate::game_board::GameBoard;
 use std::str::FromStr;
-
-mod game_board;
-mod iterators;
-mod picross;
 
 #[derive(Debug)]
 struct RowColumnRule(Vec<usize>);
@@ -67,16 +63,14 @@ enum BoardState {
 
 #[allow(dead_code)]
 impl PicrossGame {
-    fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, &'static str> {
+    pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, &'static str> {
         todo!();
     }
 
     fn validate() -> Result<BoardState, &'static str> {
         todo!()
     }
-    fn solve() -> Result<GameBoard, &'static str> {
+    pub fn solve() -> Result<GameBoard, &'static str> {
         todo!()
     }
 }
-
-fn main() {}
