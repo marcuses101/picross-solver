@@ -12,7 +12,7 @@ pub struct Segment {
     pub index: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct GameBoardRow(pub Vec<TileState>);
 
 impl GameBoardRow {
@@ -41,8 +41,8 @@ impl GameBoardRow {
     }
 }
 
-#[derive(Debug)]
-pub struct GameBoard(Vec<GameBoardRow>);
+#[derive(Debug, PartialEq, Clone)]
+pub struct GameBoard(pub Vec<GameBoardRow>);
 
 #[allow(dead_code)]
 impl GameBoard {
@@ -58,6 +58,35 @@ impl GameBoard {
         let row = self.0.get_mut(y).unwrap();
         row.set_tile(x, state);
         Ok(())
+    }
+    pub fn get_column_chunks(&self, index: usize) -> Result<Vec<usize>, &'static str> {
+        let mut chunks: Vec<usize> = vec![];
+        let mut is_collecting = false;
+        let mut count = 0;
+        for row in self.0.iter() {
+            let state = row.0.get(index).unwrap();
+            match state {
+                TileState::Filled => {
+                    count += 1;
+                    is_collecting = true;
+                }
+                TileState::Empty => {
+                    if is_collecting {
+                        chunks.push(count);
+                        count = 0;
+                        is_collecting = false;
+                    }
+                }
+                TileState::Undetermined => return Err("Cannot process undetermined tiles"), // Undetermined not
+            }
+        }
+        if count > 0 {
+            chunks.push(count);
+        }
+        if chunks.len() == 0 {
+            chunks = vec![0]
+        }
+        Ok(chunks)
     }
 }
 
@@ -85,7 +114,6 @@ impl GameBoard {
 
 #[cfg(test)]
 mod tests {
-    use crate::iterators::PicrossRowIter;
 
     use super::TileState::*;
     use super::*;
@@ -101,86 +129,26 @@ mod tests {
     #[test]
     fn test_set_tiles() {
         let mut board = GameBoard::new(3, 3);
-        let _ = board.set_tile(0, 0, TileState::Filled);
-        let _ = board.set_tile(1, 0, TileState::Empty);
-        let _ = board.set_tile(2, 0, TileState::Filled);
+        let _ = board.set_tile(0, 0, Filled);
+        let _ = board.set_tile(1, 0, Empty);
+        let _ = board.set_tile(2, 0, Filled);
 
-        let _ = board.set_tile(0, 1, TileState::Empty);
-        let _ = board.set_tile(1, 1, TileState::Filled);
-        let _ = board.set_tile(2, 1, TileState::Empty);
+        let _ = board.set_tile(0, 1, Empty);
+        let _ = board.set_tile(1, 1, Filled);
+        let _ = board.set_tile(2, 1, Empty);
 
-        let _ = board.set_tile(0, 2, TileState::Filled);
-        let _ = board.set_tile(1, 2, TileState::Empty);
-        let _ = board.set_tile(2, 2, TileState::Filled);
+        let _ = board.set_tile(0, 2, Filled);
+        let _ = board.set_tile(1, 2, Empty);
+        let _ = board.set_tile(2, 2, Filled);
 
         assert_eq!(board.render(), "x x\n x \nx x");
-    }
-
-    #[test]
-    fn test_row_iterator() {
-        let mut row_iter = PicrossRowIter::new(vec![1], 3);
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Filled, Empty, Empty])
-        );
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Empty, Filled, Empty])
-        );
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Empty, Empty, Filled])
-        );
-        assert!(row_iter.next().is_none());
-    }
-
-    #[test]
-    fn test_row_iterator_two_chunk() {
-        let mut row_iter = PicrossRowIter::new(vec![2], 3);
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Filled, Filled, Empty])
-        );
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Empty, Filled, Filled])
-        );
-        assert!(row_iter.next().is_none());
-    }
-
-    #[test]
-    fn test_row_iterator_complex() {
-        let mut row_iter = PicrossRowIter::new(vec![2, 1], 5);
-
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Filled, Filled, Empty, Filled, Empty])
-        );
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Filled, Filled, Empty, Empty, Filled])
-        );
-        assert_eq!(
-            row_iter.next().unwrap(),
-            GameBoardRow(vec![Empty, Filled, Filled, Empty, Filled])
-        );
-        assert!(row_iter.next().is_none());
     }
 
     #[test]
     fn test_build_row_from_empty_segments() {
         let segments: Vec<Segment> = vec![];
         let row = GameBoardRow::build_from_segments(segments, 5).unwrap();
-        assert_eq!(
-            row,
-            GameBoardRow(vec![
-                TileState::Empty,
-                TileState::Empty,
-                TileState::Empty,
-                TileState::Empty,
-                TileState::Empty,
-            ])
-        )
+        assert_eq!(row, GameBoardRow(vec![Empty, Empty, Empty, Empty, Empty,]))
     }
 
     #[test]
@@ -198,13 +166,19 @@ mod tests {
         let row = GameBoardRow::build_from_segments(segments, 5).unwrap();
         assert_eq!(
             row,
-            GameBoardRow(vec![
-                TileState::Filled,
-                TileState::Filled,
-                TileState::Filled,
-                TileState::Empty,
-                TileState::Filled,
-            ])
-        )
+            GameBoardRow(vec![Filled, Filled, Filled, Empty, Filled,])
+        );
+    }
+
+    #[test]
+    fn test_get_board_column_chunks() {
+        let board = GameBoard(vec![
+            GameBoardRow(vec![Filled, Empty, Empty]),
+            GameBoardRow(vec![Empty, Empty, Filled]),
+            GameBoardRow(vec![Filled, Filled, Filled]),
+        ]);
+        assert_eq!(board.get_column_chunks(0).unwrap(), vec![1, 1]);
+        assert_eq!(board.get_column_chunks(1).unwrap(), vec![1]);
+        assert_eq!(board.get_column_chunks(2).unwrap(), vec![2]);
     }
 }

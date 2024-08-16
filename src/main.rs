@@ -1,82 +1,23 @@
 use game_board::*;
-use std::str::FromStr;
+use picross::PicrossGame;
+use std::env;
 
 mod game_board;
 mod iterators;
 mod picross;
 
-#[derive(Debug)]
-struct RowColumnRule(Vec<usize>);
-
-impl FromStr for RowColumnRule {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let rule: Result<Vec<usize>, _> = s.trim().split(' ').map(|part| part.parse()).collect();
-        match rule {
-            Ok(rule) => Ok(Self(rule)),
-            _ => Err("failed to parse"),
+fn main() {
+    let mut args = env::args();
+    let _ = args.next();
+    let row_rules = args.next().expect("row argument is required");
+    let column_rules = args.next().expect("column argument is required");
+    let mut game = PicrossGame::from_rules(&row_rules, &column_rules)
+        .expect("failed to build game from the provided arguments");
+    let answer = game.solve();
+    match answer {
+        Ok(board) => {
+            println!("\n\n{}\n\n", board.render());
         }
+        Err(_) => eprintln!("failed to solve the puzzle"),
     }
 }
-
-impl RowColumnRule {
-    fn count(&self) -> usize {
-        self.0.iter().sum()
-    }
-}
-
-#[derive(Debug)]
-struct RowColumnRules(Vec<RowColumnRule>);
-
-impl FromStr for RowColumnRules {
-    type Err = &'static str;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let rules_result: Result<Vec<RowColumnRule>, _> =
-            s.trim().split(',').map(RowColumnRule::from_str).collect();
-        match rules_result {
-            Ok(rules) => Ok(Self(rules)),
-            Err(_) => Err("failed to parse"),
-        }
-    }
-}
-
-#[allow(dead_code)]
-impl RowColumnRules {
-    fn count(&self) -> usize {
-        self.0.iter().map(|entry| entry.count()).sum()
-    }
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-struct PicrossGame {
-    width: usize,
-    height: usize,
-    rows: RowColumnRules,
-    columns: RowColumnRules,
-    board: GameBoard,
-}
-
-#[allow(dead_code)]
-enum BoardState {
-    Complete,
-    InProgress,
-}
-
-#[allow(dead_code)]
-impl PicrossGame {
-    fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, &'static str> {
-        todo!();
-    }
-
-    fn validate() -> Result<BoardState, &'static str> {
-        todo!()
-    }
-    fn solve() -> Result<GameBoard, &'static str> {
-        todo!()
-    }
-}
-
-fn main() {}

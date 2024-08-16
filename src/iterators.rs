@@ -2,13 +2,13 @@ use std::collections::VecDeque;
 
 use crate::{GameBoardRow, Segment};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PicrossRowIter {
     width: usize,
     stack: VecDeque<RowIterFrame>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct RowIterFrame {
     index: usize,
     current_solution: Vec<Segment>,
