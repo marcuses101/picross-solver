@@ -41,6 +41,9 @@ impl Iterator for PicrossRowIter {
             }
 
             let current_chunk_length = frame.remaining_chunks[0];
+            if current_chunk_length == 0 {
+                return Some(GameBoardRow::build_from_segments(vec![], self.width).unwrap());
+            }
             let others = frame.remaining_chunks[1..].to_vec();
 
             for i in frame.index..self.width {
@@ -85,6 +88,16 @@ mod tests {
             GameBoardRow(vec![Empty, Empty, Filled])
         );
         assert!(row_iter.next().is_none());
+    }
+
+    #[test]
+    fn test_row_iterator_0() {
+        let mut row_iter = PicrossRowIter::new(vec![0], 3);
+        assert_eq!(
+            row_iter.next(),
+            Some(GameBoardRow(vec![Empty, Empty, Empty]))
+        );
+        assert_eq!(row_iter.next(), None);
     }
 
     #[test]

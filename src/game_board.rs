@@ -83,7 +83,7 @@ impl GameBoard {
         if count > 0 {
             chunks.push(count);
         }
-        if chunks.len() == 0 {
+        if chunks.is_empty() {
             chunks = vec![0]
         }
         Ok(chunks)

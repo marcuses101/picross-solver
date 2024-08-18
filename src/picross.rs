@@ -100,56 +100,76 @@ fn validate_board(game: &PicrossGame, board: &GameBoard) -> Result<BoardState, &
 
 #[allow(dead_code)]
 impl PicrossGame {
-    pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, &'static str> {
+    pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, String> {
         let rows = RowColumnRules::from_str(row_rules)?;
         let columns = RowColumnRules::from_str(column_rules)?;
         let row_sum: usize = rows.0.iter().map(|r| r.0.iter().sum::<usize>()).sum();
         let col_sum: usize = columns.0.iter().map(|r| r.0.iter().sum::<usize>()).sum();
         if row_sum != col_sum {
-            return Err("Invalid Rules: Sum of row rules must equal sum of col rules");
+            return Err(format!(
+                "Invalid Rules: Sum of row rules must equal sum of col rules.\nRow sum:{}\nColumn sum:{}"
+            ,row_sum,col_sum));
         }
         Ok(Self { rows, columns })
     }
 
-    pub fn solve(&mut self) -> Result<GameBoard, &'static str> {
-        let width = self.columns.0.len();
-        let mut stack: Vec<(Iter<RowColumnRule>, Option<PicrossRowIter>, GameBoard)> = vec![];
-        stack.push((self.rows.0.iter(), None, GameBoard(vec![])));
+    fn get_row_iter(&self, index: usize) -> Result<PicrossRowIter, &'static str> {
+        let rules = self.rows.0.get(index).ok_or("invalid row")?;
+        Ok(PicrossRowIter::new(rules.0.clone(), self.columns.0.len()))
+    }
 
-        while let Some((row_iter, iter_option, board)) = stack.pop() {
-            match validate_board(&self, &board)? {
+    pub fn solve_v2(&self) -> Result<GameBoard, &'static str> {
+        todo!();
+    }
+
+    pub fn solve(&self) -> Result<GameBoard, &'static str> {
+        let width = self.columns.0.len();
+
+        struct StackEntry<'a> {
+            row_iter: Iter<'a, RowColumnRule>,
+            row_layout_iter: Option<PicrossRowIter>,
+            board: GameBoard,
+        }
+        let mut stack = vec![StackEntry {
+            row_iter: self.rows.0.iter(),
+            row_layout_iter: None,
+            board: GameBoard(vec![]),
+        }];
+
+        while let Some(StackEntry {
+            mut row_iter,
+            row_layout_iter,
+            board,
+        }) = stack.pop()
+        {
+            match validate_board(self, &board)? {
                 BoardState::Invalid => (),
                 BoardState::Complete(complete_board) => return Ok(complete_board),
-                BoardState::InProgress => match iter_option {
-                    Some(row_layout_iter) => {
-                        let mut new_row_iter = row_iter.clone();
-                        let next_row_layout_iter = match new_row_iter.next() {
-                            Some(row_rule) => {
-                                Some(PicrossRowIter::new(row_rule.0.clone(), width.clone()))
+                BoardState::InProgress => {
+                    let next_row_layout_iter = row_iter
+                        .next()
+                        .map(|row_rule| PicrossRowIter::new(row_rule.0.clone(), width));
+                    match row_layout_iter {
+                        Some(row_layout_iter) => {
+                            for row_layout in row_layout_iter {
+                                let mut new_board = board.clone();
+                                new_board.0.push(row_layout);
+                                stack.push(StackEntry {
+                                    row_iter: row_iter.clone(),
+                                    row_layout_iter: next_row_layout_iter.clone(),
+                                    board: new_board,
+                                });
                             }
-                            None => None,
-                        };
-                        for row_layout in row_layout_iter {
-                            let mut new_board = board.clone();
-                            new_board.0.push(row_layout);
-                            stack.push((
-                                new_row_iter.clone(),
-                                next_row_layout_iter.clone(),
-                                new_board,
-                            ));
+                        }
+                        None => {
+                            stack.push(StackEntry {
+                                row_iter: row_iter.clone(),
+                                row_layout_iter: next_row_layout_iter.clone(),
+                                board,
+                            });
                         }
                     }
-                    None => {
-                        let mut new_row_iter = row_iter.clone();
-                        let next_row_layout_iter = match new_row_iter.next() {
-                            Some(row_rule) => {
-                                Some(PicrossRowIter::new(row_rule.0.clone(), width.clone()))
-                            }
-                            None => None,
-                        };
-                        stack.push((new_row_iter.clone(), next_row_layout_iter.clone(), board));
-                    }
-                },
+                }
             }
         }
 
@@ -177,7 +197,7 @@ mod tests {
 
     #[test]
     fn test_solve_basic_picross() {
-        let mut game = PicrossGame::from_rules("1", "0,0,1").unwrap();
+        let game = PicrossGame::from_rules("1", "0,0,1").unwrap();
         let game_res = game.solve();
         assert!(game_res.is_ok());
         let solved_board = game_res.unwrap();
@@ -187,7 +207,7 @@ mod tests {
 
     #[test]
     fn test_solve_medium_picross() {
-        let mut game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
+        let game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
         let game_res = game.solve();
         assert!(game_res.is_ok());
         let solved_board = game_res.unwrap();
@@ -201,7 +221,7 @@ mod tests {
 
     #[test]
     fn test_solve_complex_picross() {
-        let mut game = PicrossGame::from_rules("1 1,1 1,5,1 1 1,5", "3,3 1,3,3 1,3").unwrap();
+        let game = PicrossGame::from_rules("1 1,1 1,5,1 1 1,5", "3,3 1,3,3 1,3").unwrap();
         let game_res = game.solve();
         assert!(game_res.is_ok());
         let solved_board = game_res.unwrap();
