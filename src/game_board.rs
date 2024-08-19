@@ -54,7 +54,38 @@ impl GameBoard {
         Self(board)
     }
 
-    pub fn set_tile(&mut self, x: usize, y: usize, state: TileState) -> Result<(), String> {
+    pub fn merge_board(&self, board: Self) -> Result<Self, &'static str> {
+        let merged_board: Result<Vec<GameBoardRow>, &'static str> = self
+            .0
+            .clone()
+            .into_iter()
+            .zip(board.0)
+            .map(|(row_a, row_b)| {
+                let merged_row: Result<Vec<TileState>, &'static str> = row_a
+                    .0
+                    .into_iter()
+                    .zip(row_b.0)
+                    .map(|tile_pair| match tile_pair {
+                        (TileState::Filled, TileState::Filled) => Ok(TileState::Filled),
+                        (TileState::Filled, TileState::Undetermined) => Ok(TileState::Filled),
+                        (TileState::Undetermined, TileState::Filled) => Ok(TileState::Filled),
+                        (TileState::Empty, TileState::Empty) => Ok(TileState::Empty),
+                        (TileState::Empty, TileState::Undetermined) => Ok(TileState::Empty),
+                        (TileState::Undetermined, TileState::Empty) => Ok(TileState::Empty),
+                        (TileState::Undetermined, TileState::Undetermined) => {
+                            Ok(TileState::Undetermined)
+                        }
+                        (TileState::Filled, TileState::Empty) => Err("Invalid Tile Combination"),
+                        (TileState::Empty, TileState::Filled) => Err("Invalid Tile Combination"),
+                    })
+                    .collect();
+                merged_row.map(GameBoardRow)
+            })
+            .collect();
+        merged_board.map(GameBoard)
+    }
+
+    pub fn set_tile(&mut self, x: usize, y: usize, state: TileState) -> Result<(), &'static str> {
         let row = self.0.get_mut(y).unwrap();
         row.set_tile(x, state);
         Ok(())

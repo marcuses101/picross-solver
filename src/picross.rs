@@ -1,4 +1,4 @@
-use crate::{game_board::GameBoard, iterators::PicrossRowIter};
+use crate::{game_board::GameBoard, iterators::PicrossRowIter, GameBoardRow};
 use std::{slice::Iter, str::FromStr};
 
 #[derive(Debug, PartialEq)]
@@ -13,12 +13,6 @@ impl FromStr for RowColumnRule {
             Ok(rule) => Ok(Self(rule)),
             _ => Err("failed to parse"),
         }
-    }
-}
-
-impl RowColumnRule {
-    fn count(&self) -> usize {
-        self.0.iter().sum()
     }
 }
 
@@ -38,21 +32,12 @@ impl FromStr for RowColumnRules {
     }
 }
 
-#[allow(dead_code)]
-impl RowColumnRules {
-    fn count(&self) -> usize {
-        self.0.iter().map(|entry| entry.count()).sum()
-    }
-}
-
-#[allow(dead_code)]
 #[derive(Debug)]
 pub struct PicrossGame {
     rows: RowColumnRules,
     columns: RowColumnRules,
 }
 
-#[allow(dead_code)]
 #[derive(Debug)]
 enum BoardState {
     Complete(GameBoard),
@@ -100,12 +85,25 @@ fn validate_board(game: &PicrossGame, board: &GameBoard) -> Result<BoardState, &
 
 #[allow(dead_code)]
 impl PicrossGame {
+    pub fn width(&self) -> usize {
+        self.columns.0.len()
+    }
+    pub fn height(&self) -> usize {
+        self.rows.0.len()
+    }
     pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, String> {
         let rows = RowColumnRules::from_str(row_rules)?;
         let columns = RowColumnRules::from_str(column_rules)?;
         let row_sum: usize = rows.0.iter().map(|r| r.0.iter().sum::<usize>()).sum();
         let col_sum: usize = columns.0.iter().map(|r| r.0.iter().sum::<usize>()).sum();
         if row_sum != col_sum {
+            eprintln!(
+                "Row Count:{} Row Sum:{}\nCol Count:{} Col Sum:{}",
+                rows.0.len(),
+                row_sum,
+                columns.0.len(),
+                col_sum
+            );
             return Err(format!(
                 "Invalid Rules: Sum of row rules must equal sum of col rules.\nRow sum:{}\nColumn sum:{}"
             ,row_sum,col_sum));
@@ -114,12 +112,100 @@ impl PicrossGame {
     }
 
     fn get_row_iter(&self, index: usize) -> Result<PicrossRowIter, &'static str> {
-        let rules = self.rows.0.get(index).ok_or("invalid row")?;
-        Ok(PicrossRowIter::new(rules.0.clone(), self.columns.0.len()))
+        let rules = self.rows.0.get(index).ok_or("invalid row index")?;
+        Ok(PicrossRowIter::new(&rules.0, self.width()))
+    }
+
+    fn get_column_iter(&self, index: usize) -> Result<PicrossRowIter, &'static str> {
+        let rules = self.columns.0.get(index).ok_or("invalid column index")?;
+        Ok(PicrossRowIter::new(&rules.0, self.height()))
+    }
+    pub fn get_partial_board_from_rows(
+        &self,
+        reference_board: Option<GameBoard>,
+    ) -> Result<GameBoard, &'static str> {
+        let current_board = match reference_board {
+            Some(board) => board,
+            None => GameBoard::new(self.width(), self.height()),
+        };
+        let rows: Result<Vec<GameBoardRow>, &'static str> = self
+            .rows
+            .0
+            .iter()
+            .zip(current_board.0)
+            .map(|(rule, reference_row)| {
+                let mut row_iter = PicrossRowIter::new(&rule.0, self.width());
+                row_iter.get_partially_solved_row(Some(reference_row))
+            })
+            .collect();
+        rows.map(GameBoard)
+    }
+    fn get_partial_board_from_columns(
+        &self,
+        reference_board: Option<GameBoard>,
+    ) -> Result<GameBoard, &'static str> {
+        let current_board = match reference_board {
+            Some(board) => board,
+            None => GameBoard::new(self.width(), self.height()),
+        };
+        let mut board_flipped = GameBoard::new(self.height(), self.width());
+        for (y, row) in current_board.0.iter().enumerate() {
+            for (x, tile) in row.0.iter().enumerate() {
+                board_flipped.set_tile(y, x, tile.clone())?;
+            }
+        }
+
+        let columns: Result<Vec<GameBoardRow>, &'static str> = self
+            .columns
+            .0
+            .iter()
+            .zip(board_flipped.0)
+            .map(|(rule, reference_row)| {
+                let mut row_iter = PicrossRowIter::new(&rule.0, self.height());
+                row_iter.get_partially_solved_row(Some(reference_row))
+            })
+            .collect();
+        let mut output_board = GameBoard::new(self.width(), self.height());
+        for (x, column) in columns?.iter().enumerate() {
+            for (y, tile) in column.0.iter().enumerate() {
+                output_board.set_tile(x, y, tile.clone())?;
+            }
+        }
+        Ok(output_board)
     }
 
     pub fn solve_v2(&self) -> Result<GameBoard, &'static str> {
-        todo!();
+        let mut current_board =
+            self.get_partial_board_from_columns(Some(self.get_partial_board_from_rows(None)?))?;
+        let mut iterations = 1;
+        loop {
+            let new_board = self.get_partial_board_from_columns(Some(
+                self.get_partial_board_from_rows(Some(current_board.clone()))?,
+            ))?;
+            iterations += 1;
+            println!(
+                "-----\nIteration:{}\n\n{}\n------",
+                iterations,
+                new_board.render()
+            );
+            if current_board == new_board {
+                if new_board.0.iter().all(|row| {
+                    row.0
+                        .iter()
+                        .all(|tile| !matches!(tile, crate::TileState::Undetermined))
+                }) {
+                    return Ok(new_board);
+                } else {
+                    eprintln!(
+                        "\n-----\nCould not determine:\n{}\n------",
+                        new_board.render()
+                    );
+                    return Err("Not Complete");
+                }
+            } else {
+                current_board = new_board;
+            }
+        }
     }
 
     pub fn solve(&self) -> Result<GameBoard, &'static str> {
@@ -127,7 +213,7 @@ impl PicrossGame {
 
         struct StackEntry<'a> {
             row_iter: Iter<'a, RowColumnRule>,
-            row_layout_iter: Option<PicrossRowIter>,
+            row_layout_iter: Option<PicrossRowIter<'a>>,
             board: GameBoard,
         }
         let mut stack = vec![StackEntry {
@@ -148,7 +234,7 @@ impl PicrossGame {
                 BoardState::InProgress => {
                     let next_row_layout_iter = row_iter
                         .next()
-                        .map(|row_rule| PicrossRowIter::new(row_rule.0.clone(), width));
+                        .map(|row_rule| PicrossRowIter::new(&row_rule.0, width));
                     match row_layout_iter {
                         Some(row_layout_iter) => {
                             for row_layout in row_layout_iter {
@@ -223,6 +309,46 @@ mod tests {
     fn test_solve_complex_picross() {
         let game = PicrossGame::from_rules("1 1,1 1,5,1 1 1,5", "3,3 1,3,3 1,3").unwrap();
         let game_res = game.solve();
+        assert!(game_res.is_ok());
+        let solved_board = game_res.unwrap();
+        let expected = GameBoard(vec![
+            GameBoardRow(vec![Empty, Filled, Empty, Filled, Empty]),
+            GameBoardRow(vec![Empty, Filled, Empty, Filled, Empty]),
+            GameBoardRow(vec![Filled, Filled, Filled, Filled, Filled]),
+            GameBoardRow(vec![Filled, Empty, Filled, Empty, Filled]),
+            GameBoardRow(vec![Filled, Filled, Filled, Filled, Filled]),
+        ]);
+        assert_eq!(solved_board, expected);
+    }
+
+    #[test]
+    fn test_solve_v2_basic_picross() {
+        let game = PicrossGame::from_rules("1", "0,0,1").unwrap();
+        let game_res = game.solve_v2();
+        assert!(game_res.is_ok());
+        let solved_board = game_res.unwrap();
+        let expected = GameBoard(vec![GameBoardRow(vec![Empty, Empty, Filled])]);
+        assert_eq!(solved_board, expected);
+    }
+
+    #[test]
+    fn test_solve_v2_medium_picross() {
+        let game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
+        let game_res = game.solve_v2();
+        assert!(game_res.is_ok());
+        let solved_board = game_res.unwrap();
+        let expected = GameBoard(vec![
+            GameBoardRow(vec![Filled, Empty, Filled]),
+            GameBoardRow(vec![Empty, Filled, Empty]),
+            GameBoardRow(vec![Filled, Empty, Filled]),
+        ]);
+        assert_eq!(solved_board, expected);
+    }
+
+    #[test]
+    fn test_solve_v2_complex_picross() {
+        let game = PicrossGame::from_rules("1 1,1 1,5,1 1 1,5", "3,3 1,3,3 1,3").unwrap();
+        let game_res = game.solve_v2();
         assert!(game_res.is_ok());
         let solved_board = game_res.unwrap();
         let expected = GameBoard(vec![

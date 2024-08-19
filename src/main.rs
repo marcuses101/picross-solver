@@ -7,9 +7,9 @@ mod iterators;
 mod picross;
 
 #[allow(dead_code)]
-const ROW_INPUT: &str = "4 2,1 5,1 1 1 4,1 1 1 1,1 1 1 1 1,5 1 1 1,3 3 1 1,3 5,3 3,5";
+const ROW_INPUT: &str = "0,0,0,1,0";
 #[allow(dead_code)]
-const COLUMN_INPUT: &str = "2,2 2,2 2,1 2 2,1 2,2 1,1 4,10,1 4,2 1,1 2,1 2 2,2 2,2 2,2";
+const COLUMN_INPUT: &str = "0,1,0,0,0";
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let mut args = env::args();
@@ -19,9 +19,9 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     let game = PicrossGame::from_rules(&row_rules, &column_rules)?;
 
     let start = Instant::now();
-    let answer = game.solve();
+    let answer = game.solve_v2();
     let duration = start.elapsed();
-    println!("Time elapsed in expensive_function() is: {:?}", duration);
+    println!("Time elapsed in solve_v2 is: {:?}", duration);
     match answer {
         Ok(board) => {
             println!("\n\n{}\n\n", board.render());
