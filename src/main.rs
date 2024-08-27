@@ -6,22 +6,21 @@ mod game_board;
 mod iterators;
 mod picross;
 
-#[allow(dead_code)]
-const ROW_INPUT: &str = "0,0,0,1,0";
-#[allow(dead_code)]
-const COLUMN_INPUT: &str = "0,1,0,0,0";
-
 fn main() -> Result<(), Box<dyn error::Error>> {
+    let path = "./puzzles/136.pic";
+    let game = PicrossGame::from_filepath(path)?;
     let mut args = env::args();
-    let _ = args.next();
-    let row_rules = args.next().expect("row argument is required");
-    let column_rules = args.next().expect("column argument is required");
-    let game = PicrossGame::from_rules(&row_rules, &column_rules)?;
-
+    args.next();
+    let version = args.next().unwrap_or("3".into()).parse::<usize>()?;
     let start = Instant::now();
-    let answer = game.solve_v2();
+    let answer = match version {
+        1 => game.solve_v1(),
+        2 => game.solve_v2(),
+        _ => game.solve_v3(),
+    };
     let duration = start.elapsed();
-    println!("Time elapsed in solve_v2 is: {:?}", duration);
+
+    println!("Time elapsed in solve_v{} is: {:?}", version, duration);
     match answer {
         Ok(board) => {
             println!("\n\n{}\n\n", board.render());

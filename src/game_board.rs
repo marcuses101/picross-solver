@@ -84,6 +84,12 @@ impl GameBoard {
             .collect();
         merged_board.map(GameBoard)
     }
+    pub fn get_column(&self, column_index: usize) -> Vec<TileState> {
+        self.0
+            .iter()
+            .map(|row| row.0[column_index].clone())
+            .collect()
+    }
 
     pub fn set_tile(&mut self, x: usize, y: usize, state: TileState) -> Result<(), &'static str> {
         let row = self.0.get_mut(y).unwrap();
