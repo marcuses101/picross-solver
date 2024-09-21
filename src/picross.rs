@@ -1,6 +1,8 @@
 use crate::{game_board::GameBoard, iterators::PicrossLineIter, GameBoardRow, TileState};
 use std::{collections::VecDeque, fs::read_to_string, slice::Iter, str::FromStr};
 
+const DIVIDER: &str = "-----";
+
 #[derive(Debug, PartialEq)]
 pub struct RowColumnRule(Vec<usize>);
 
@@ -93,12 +95,7 @@ impl PicrossGame {
     }
     pub fn from_filepath(filename: &str) -> Result<Self, String> {
         let content = read_to_string(filename).map_err(|_| "Failed to read file")?;
-        let mut rules = content
-            .split("-----")
-            .map(|section| section.trim().lines().collect::<Vec<&str>>().join(","));
-        let row_rules = rules.next().ok_or("invalid file format")?;
-        let col_rules = rules.next().ok_or("invalid file format")?;
-        PicrossGame::from_rules(&row_rules, &col_rules)
+        PicrossGame::from_rules_file_string(&content)
     }
 
     pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, String> {
@@ -119,6 +116,45 @@ impl PicrossGame {
             ,row_sum,col_sum));
         }
         Ok(Self { rows, columns })
+    }
+
+    pub fn from_rules_file_string(input: &str) -> Result<Self, String> {
+        let mut rules = input
+            .split(DIVIDER)
+            .map(|section| section.trim().lines().collect::<Vec<&str>>().join(","));
+        let row_rules = rules.next().ok_or("invalid file format")?;
+        let col_rules = rules.next().ok_or("invalid file format")?;
+        PicrossGame::from_rules(&row_rules, &col_rules)
+    }
+
+    pub fn to_rules_file_string(&self) -> String {
+        let row_string: String = self
+            .rows
+            .0
+            .iter()
+            .map(|rule| {
+                rule.0
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        let col_string: String = self
+            .columns
+            .0
+            .iter()
+            .map(|rule| {
+                rule.0
+                    .iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<String>>()
+                    .join(" ")
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        format!("{row_string}\n{DIVIDER}\n{col_string}")
     }
 
     fn get_row_iter(&self, index: usize) -> Result<PicrossLineIter, &'static str> {
@@ -363,6 +399,36 @@ mod tests {
     use crate::{GameBoardRow, TileState::*};
 
     use super::*;
+
+    #[test]
+    fn test_to_rules_string() {
+        let game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
+        let output = game.to_rules_file_string();
+        let expected = "\
+1 1
+1
+1 1
+-----
+1 1
+1
+1 1";
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn test_from_and_to_rules_string() {
+        let input = "\
+1 1
+1
+1 1
+-----
+1 1
+1
+1 1";
+        let game = PicrossGame::from_rules_file_string(input).unwrap();
+        let output = game.to_rules_file_string();
+        assert_eq!(input, output);
+    }
 
     #[test]
     fn test_row_column_rules_from_string() {

@@ -1,5 +1,3 @@
-use std::usize;
-
 use crate::{GameBoardRow, Segment, TileState};
 
 #[derive(Debug, Clone)]

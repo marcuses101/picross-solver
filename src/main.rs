@@ -5,6 +5,7 @@ use std::{env, error, time::Instant};
 mod game_board;
 mod iterators;
 mod picross;
+mod text_to_puzzle;
 
 fn main() -> Result<(), Box<dyn error::Error>> {
     let path = "./puzzles/136.pic";
