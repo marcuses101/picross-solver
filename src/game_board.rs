@@ -16,7 +16,7 @@ pub struct Segment {
 pub struct GameBoardRow(pub Vec<TileState>);
 
 impl GameBoardRow {
-    fn new(width: usize) -> Self {
+    pub fn new(width: usize) -> Self {
         Self(vec![TileState::Undetermined; width])
     }
     fn set_tile(&mut self, index: usize, tile: TileState) {

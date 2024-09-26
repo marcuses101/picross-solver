@@ -13,6 +13,8 @@ pub struct PicrossSolverV3(pub PicrossGame);
 impl PicrossSolver for PicrossSolverV3 {
     fn solve(&self) -> Result<PicrossFrame, &'static str> {
         let mut board = GameBoard::new(self.0.width(), self.0.height());
+        let frame = PicrossFrame::new(self.0.clone(), board.clone(), GameState::InProgress)?;
+        frame.print(true);
         #[derive(Debug, PartialEq)]
         enum ToCheck {
             Row,
@@ -23,6 +25,8 @@ impl PicrossSolver for PicrossSolverV3 {
         (0..self.0.height()).for_each(|row_index| queue.push_back((ToCheck::Row, row_index)));
         // populate the rows initially
         while let Some((board_axis, index)) = queue.pop_front() {
+            let frame = PicrossFrame::new(self.0.clone(), board.clone(), GameState::InProgress)?;
+            frame.print(false);
             match board_axis {
                 ToCheck::Row => {
                     let row_index = index;
@@ -99,8 +103,8 @@ impl PicrossSolver for PicrossSolverV3 {
             let frame = PicrossFrame::new(self.0.clone(), board, GameState::Complete)?;
             Ok(frame)
         } else {
-            eprintln!("\n-----\nCould not determine:\n{}\n------", board.render());
-            Err("Not Complete")
+            let frame = PicrossFrame::new(self.0.clone(), board, GameState::Invalid)?;
+            Ok(frame)
         }
     }
 

@@ -51,6 +51,11 @@ impl App {
             .ok_or("Picross Game not set prior to solving")?
             .clone();
         self.version.set_game(game);
+        println!(
+            "{}{}Solving Started...",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1),
+        );
         let start = Instant::now();
         let result = self.version.solve()?;
         let duration = start.elapsed();

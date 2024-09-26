@@ -1,7 +1,7 @@
 use std::slice::Iter;
 
 use crate::{
-    game_board::GameBoard,
+    game_board::{GameBoard, GameBoardRow},
     iterators::PicrossLineIter,
     picross::{validate_board, BoardState, LineRule},
     render::{GameState, PicrossFrame},
@@ -16,6 +16,10 @@ impl PicrossSolver for PicrossSolverV1 {
         self.0 = game;
     }
     fn solve(&self) -> Result<PicrossFrame, &'static str> {
+        let initial_board = GameBoard::new(self.0.width(), self.0.height());
+        let frame =
+            PicrossFrame::new(self.0.clone(), initial_board.clone(), GameState::InProgress)?;
+        frame.print(true);
         let width = self.0.columns.0.len();
 
         struct StackEntry<'a> {
@@ -38,6 +42,16 @@ impl PicrossSolver for PicrossSolverV1 {
         }) = stack.pop()
         {
             last_board = Some(board.clone());
+
+            let mut render_board = board.clone();
+            let missing_rows = self.0.height() - render_board.height();
+            if missing_rows > 0 {
+                for _ in 0..missing_rows {
+                    render_board.0.push(GameBoardRow::new(self.0.width()));
+                }
+            }
+            let frame = PicrossFrame::new(self.0.clone(), render_board, GameState::InProgress)?;
+            frame.print(false);
 
             match validate_board(&self.0, &board)? {
                 BoardState::Invalid => (),

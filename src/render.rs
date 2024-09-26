@@ -16,9 +16,9 @@ pub enum GameState {
 impl Display for GameState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let output = match self {
-            GameState::InProgress => "In Progress",
-            GameState::Invalid => "Invalid",
-            GameState::Complete => "Complete",
+            GameState::InProgress => "In Progress    ",
+            GameState::Invalid => "Invalid        ",
+            GameState::Complete => "Complete       ",
         };
         write!(f, "{}", output)
     }
@@ -114,6 +114,13 @@ impl PicrossFrame {
             self.game_state, column_rules_rendered, rows_and_board
         )
     }
+    pub fn print(&self, clear: bool) {
+        let render = self.render();
+        if clear {
+            print!("{}", termion::clear::All);
+        }
+        print!("{}{}", termion::cursor::Goto(1, 1), render);
+    }
 }
 
 #[cfg(test)]
@@ -147,7 +154,7 @@ mod tests {
         ]);
         let game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
         let frame = PicrossFrame::new(game, board, GameState::InProgress).unwrap();
-        let expected = "In Progress\n
+        let expected = "In Progress    \n
    1   1 
    1 1 1 
 1 1██  ██

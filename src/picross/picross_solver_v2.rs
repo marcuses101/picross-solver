@@ -1,5 +1,5 @@
 use crate::{
-    game_board::TileState,
+    game_board::{GameBoard, TileState},
     render::{GameState, PicrossFrame},
 };
 
@@ -9,14 +9,24 @@ pub struct PicrossSolverV2(pub PicrossGame);
 
 impl PicrossSolver for PicrossSolverV2 {
     fn solve(&self) -> Result<PicrossFrame, &'static str> {
+        let initial_board = GameBoard::new(self.0.width(), self.0.height());
+        let frame =
+            PicrossFrame::new(self.0.clone(), initial_board.clone(), GameState::InProgress)?;
+        frame.print(true);
         let mut current_board = self
             .0
             .get_partial_board_from_columns(Some(self.0.get_partial_board_from_rows(None)?))?;
+        let frame =
+            PicrossFrame::new(self.0.clone(), current_board.clone(), GameState::InProgress)?;
+        frame.print(false);
         loop {
             let new_board = self.0.get_partial_board_from_columns(Some(
                 self.0
                     .get_partial_board_from_rows(Some(current_board.clone()))?,
             ))?;
+            let frame =
+                PicrossFrame::new(self.0.clone(), new_board.clone(), GameState::InProgress)?;
+            frame.print(false);
             if current_board == new_board {
                 if new_board.0.iter().all(|row| {
                     row.0
