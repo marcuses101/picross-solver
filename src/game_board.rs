@@ -1,9 +1,9 @@
 #[allow(dead_code)]
 #[derive(Clone, Debug, PartialEq)]
 pub enum TileState {
+    Undetermined,
     Filled,
     Empty,
-    Undetermined,
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +52,16 @@ impl GameBoard {
             .map(|_| GameBoardRow::new(width))
             .collect();
         Self(board)
+    }
+    pub fn height(&self) -> usize {
+        self.0.len()
+    }
+    pub fn width(&self) -> usize {
+        let row_res = self.0.get(0);
+        match row_res {
+            Some(row) => row.0.len(),
+            None => 0,
+        }
     }
 
     pub fn merge_board(&self, board: Self) -> Result<Self, &'static str> {
@@ -137,9 +147,9 @@ impl GameBoard {
                 row.0
                     .iter()
                     .map(|tile| match tile {
-                        TileState::Empty => ' ',
-                        TileState::Filled => 'x',
-                        TileState::Undetermined => '?',
+                        TileState::Empty => "  ",
+                        TileState::Filled => "██",
+                        TileState::Undetermined => "??",
                     })
                     .collect::<String>()
             })
@@ -159,7 +169,7 @@ mod tests {
     fn test_render_game_board() {
         let board = GameBoard::new(3, 3);
         let board_string = board.render();
-        let expected = "???\n???\n???";
+        let expected = "??????\n??????\n??????";
         assert_eq!(board_string, expected);
     }
 
@@ -178,7 +188,7 @@ mod tests {
         let _ = board.set_tile(1, 2, Empty);
         let _ = board.set_tile(2, 2, Filled);
 
-        assert_eq!(board.render(), "x x\n x \nx x");
+        assert_eq!(board.render(), "██  ██\n  ██  \n██  ██");
     }
 
     #[test]

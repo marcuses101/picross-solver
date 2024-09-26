@@ -1,4 +1,4 @@
-use crate::{GameBoardRow, Segment, TileState};
+use crate::game_board::{GameBoardRow, Segment, TileState};
 
 #[derive(Debug, Clone)]
 pub struct PicrossLineIter<'a> {
@@ -29,10 +29,7 @@ impl<'a> PicrossLineIter<'a> {
         known_row: Option<&GameBoardRow>,
     ) -> Result<GameBoardRow, &'static str> {
         let default = GameBoardRow(vec![TileState::Undetermined; self.width]);
-        let compare_row = match known_row {
-            Some(row) => row,
-            None => &default,
-        };
+        let compare_row = known_row.unwrap_or(&default);
         self.filter(|row| {
             row.0.iter().zip(&compare_row.0).all(|pair| {
                 !matches!(
@@ -44,7 +41,7 @@ impl<'a> PicrossLineIter<'a> {
         .reduce(|acc, cur| {
             let row: Vec<TileState> = acc
                 .0
-                .into_iter()
+                .iter()
                 .zip(cur.0)
                 .map(|pair| match pair {
                     (TileState::Filled, TileState::Filled) => TileState::Filled,
@@ -99,7 +96,7 @@ impl Iterator for PicrossLineIter<'_> {
 mod tests {
 
     use super::*;
-    use crate::TileState::*;
+    use crate::game_board::TileState::*;
 
     #[test]
     fn test_row_iterator() {
