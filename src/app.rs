@@ -1,12 +1,12 @@
-use crate::picross::{
-    picross_solver_v1::PicrossSolverV1, picross_solver_v2::PicrossSolverV2,
-    picross_solver_v3::PicrossSolverV3, PicrossGame, PicrossSolver,
-};
+use std::{fs::read_to_string, time::Instant};
 
-pub enum AppScreen {
-    Welcome,
-    Solve,
-}
+use crate::{
+    picross::{
+        picross_solver_v1::PicrossSolverV1, picross_solver_v2::PicrossSolverV2,
+        picross_solver_v3::PicrossSolverV3, PicrossGame, PicrossSolver,
+    },
+    render::PicrossFrame,
+};
 
 pub enum SolverVersion {
     One(PicrossSolverV1),
@@ -15,7 +15,7 @@ pub enum SolverVersion {
 }
 
 impl SolverVersion {
-    fn solve(&mut self) -> Result<crate::game_board::GameBoard, &str> {
+    fn solve(&mut self) -> Result<PicrossFrame, &str> {
         match self {
             SolverVersion::One(solver) => solver.solve(),
             SolverVersion::Two(solver) => solver.solve(),
@@ -32,7 +32,6 @@ impl SolverVersion {
 }
 
 pub struct App {
-    pub screen: AppScreen,
     pub version: SolverVersion,
     game: Option<PicrossGame>,
 }
@@ -41,35 +40,66 @@ impl App {
     pub fn new() -> Self {
         let default_game = PicrossGame::default();
         App {
-            screen: AppScreen::Welcome,
             version: SolverVersion::Three(PicrossSolverV3::from_game(default_game)),
             game: None,
         }
     }
-    pub fn run(&mut self) -> Result<(), String> {
-        match self.screen {
-            AppScreen::Welcome => {
-                todo!()
+    pub fn solve(&mut self) -> Result<(), String> {
+        let game = self
+            .game
+            .as_ref()
+            .ok_or("Picross Game not set prior to solving")?
+            .clone();
+        self.version.set_game(game);
+        let start = Instant::now();
+        let result = self.version.solve()?;
+        let duration = start.elapsed();
+        let rendered_result = result.render();
+        println!(
+            "{}{}{}\n\nElapsed time: {:?}",
+            termion::clear::All,
+            termion::cursor::Goto(1, 1),
+            rendered_result,
+            duration
+        );
+        Ok(())
+    }
+    pub fn change_version(&mut self, version: &str) -> Result<(), String> {
+        match version {
+            "v1" => {
+                self.version =
+                    SolverVersion::One(PicrossSolverV1(PicrossGame::from_rules("0", "0")?))
             }
-            AppScreen::Solve => {
-                let game = self
-                    .game
-                    .as_ref()
-                    .ok_or("Picross Game not set prior to solving")?
-                    .clone();
-                self.version.set_game(game);
-                let result = self.version.solve();
+            "v2" => {
+                self.version =
+                    SolverVersion::Two(PicrossSolverV2(PicrossGame::from_rules("0", "0")?))
+            }
+            "v3" => {
+                self.version =
+                    SolverVersion::Three(PicrossSolverV3(PicrossGame::from_rules("0", "0")?))
+            }
+            _ => {
+                return Err(
+                    "invalid version selection\n Available versions are: v1, v2, v3".to_string(),
+                )
             }
         }
         Ok(())
     }
-    fn change_version(&mut self, version: SolverVersion) {
-        self.version = version;
+    pub fn select_game_from_text_image(&mut self, text_file_name: &str) -> Result<(), String> {
+        let filepath = format!("./text_images/{}.txt", text_file_name);
+        let text_render =
+            read_to_string(&filepath).map_err(|_| format!("could not read \"{}\"", filepath))?;
+        let game = PicrossGame::from_text_render(&text_render)?;
+        self.game = Some(game);
+        Ok(())
     }
-    fn select_game_from_text_image() {
-        todo!();
-    }
-    fn select_game_from_puzzles() {
-        todo!()
+    pub fn select_game_from_puzzles(&mut self, puzzle_name: &str) -> Result<(), String> {
+        let filepath = format!("./puzzles/{}.pic", puzzle_name);
+        let rules_file_content =
+            read_to_string(&filepath).map_err(|_| format!("could not read \"{}\"", filepath))?;
+        let game = PicrossGame::from_rules_file_string(&rules_file_content)?;
+        self.game = Some(game);
+        Ok(())
     }
 }

@@ -1,6 +1,11 @@
 use std::slice::Iter;
 
-use crate::{iterators::PicrossLineIter, picross::{validate_board, BoardState, LineRule}, game_board::GameBoard};
+use crate::{
+    game_board::GameBoard,
+    iterators::PicrossLineIter,
+    picross::{validate_board, BoardState, LineRule},
+    render::{GameState, PicrossFrame},
+};
 
 use super::{PicrossGame, PicrossSolver};
 
@@ -10,8 +15,8 @@ impl PicrossSolver for PicrossSolverV1 {
     fn set_game(&mut self, game: PicrossGame) {
         self.0 = game;
     }
-    fn solve(&self) -> Result<GameBoard, &'static str> {
-       let width = self.0.columns.0.len();
+    fn solve(&self) -> Result<PicrossFrame, &'static str> {
+        let width = self.0.columns.0.len();
 
         struct StackEntry<'a> {
             row_iter: Iter<'a, LineRule>,
@@ -24,15 +29,25 @@ impl PicrossSolver for PicrossSolverV1 {
             board: GameBoard(vec![]),
         }];
 
+        let mut last_board: Option<GameBoard> = None;
+
         while let Some(StackEntry {
             mut row_iter,
             row_layout_iter,
             board,
         }) = stack.pop()
         {
+            last_board = Some(board.clone());
+
             match validate_board(&self.0, &board)? {
                 BoardState::Invalid => (),
-                BoardState::Complete(complete_board) => return Ok(complete_board),
+                BoardState::Complete(complete_board) => {
+                    return Ok(PicrossFrame::new(
+                        self.0.clone(),
+                        complete_board,
+                        GameState::Complete,
+                    )?)
+                }
                 BoardState::InProgress => {
                     let next_row_layout_iter = row_iter
                         .next()
@@ -60,8 +75,12 @@ impl PicrossSolver for PicrossSolverV1 {
                 }
             }
         }
-
-        Err("no solution found")
+        let failed_frame = PicrossFrame::new(
+            self.0.clone(),
+            last_board.ok_or("no last board")?.clone(),
+            GameState::Invalid,
+        )?;
+        Ok(failed_frame)
     }
 
     fn from_game(game: PicrossGame) -> Self {

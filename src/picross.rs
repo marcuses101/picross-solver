@@ -1,5 +1,9 @@
-use crate::{game_board::GameBoard, game_board::GameBoardRow, iterators::PicrossLineIter};
-use std::{fs::read_to_string, str::FromStr};
+use crate::{
+    game_board::{GameBoard, GameBoardRow},
+    iterators::PicrossLineIter,
+    render::PicrossFrame,
+};
+use std::str::FromStr;
 
 pub mod picross_solver_v1;
 pub mod picross_solver_v2;
@@ -127,7 +131,7 @@ fn validate_board(game: &PicrossGame, board: &GameBoard) -> Result<BoardState, &
 }
 
 pub trait PicrossSolver {
-    fn solve(&self) -> Result<GameBoard, &'static str>;
+    fn solve(&self) -> Result<PicrossFrame, &'static str>;
     fn from_game(game: PicrossGame) -> Self;
     fn set_game(&mut self, game: PicrossGame);
 }
@@ -144,10 +148,6 @@ impl PicrossGame {
     }
     pub fn height(&self) -> usize {
         self.rows.0.len()
-    }
-    pub fn from_filepath(filename: &str) -> Result<Self, String> {
-        let content = read_to_string(filename).map_err(|_| "Failed to read file")?;
-        PicrossGame::from_rules_file_string(&content)
     }
 
     pub fn from_rules(row_rules: &str, column_rules: &str) -> Result<Self, String> {
@@ -296,16 +296,23 @@ mod tests {
     use picross_solver_v2::PicrossSolverV2;
     use picross_solver_v3::PicrossSolverV3;
 
-    use crate::{game_board::GameBoardRow, game_board::TileState::*};
+    use crate::{
+        game_board::{GameBoardRow, TileState::*},
+        render::GameState,
+    };
 
     use super::*;
 
     fn run_solver_tests<T: PicrossSolver>(instance: &mut T) {
         let basic_game = PicrossGame::from_rules("1", "0,0,1").unwrap();
         let basic_expected = GameBoard(vec![GameBoardRow(vec![Empty, Empty, Filled])]);
-
         instance.set_game(basic_game);
-        assert_eq!(instance.solve(), Ok(basic_expected));
+        let solved_frame = instance.solve().unwrap();
+        assert_eq!(solved_frame.game_state, GameState::Complete);
+
+        let solved_board = solved_frame.board;
+        assert_eq!(solved_board, basic_expected);
+
         let medium_game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
         let medium_expected = GameBoard(vec![
             GameBoardRow(vec![Filled, Empty, Filled]),
@@ -313,7 +320,13 @@ mod tests {
             GameBoardRow(vec![Filled, Empty, Filled]),
         ]);
         instance.set_game(medium_game);
-        assert_eq!(instance.solve(), Ok(medium_expected));
+
+        let solved_frame = instance.solve().unwrap();
+        assert_eq!(solved_frame.game_state, GameState::Complete);
+
+        let solved_board = solved_frame.board;
+        assert_eq!(solved_board, medium_expected);
+
         let complex_game = PicrossGame::from_rules("1 1,1 1,5,1 1 1,5", "3,3 1,3,3 1,3").unwrap();
         let complex_expected = GameBoard(vec![
             GameBoardRow(vec![Empty, Filled, Empty, Filled, Empty]),
@@ -322,8 +335,13 @@ mod tests {
             GameBoardRow(vec![Filled, Empty, Filled, Empty, Filled]),
             GameBoardRow(vec![Filled, Filled, Filled, Filled, Filled]),
         ]);
+
         instance.set_game(complex_game);
-        assert_eq!(instance.solve(), Ok(complex_expected));
+        let solved_frame = instance.solve().unwrap();
+        assert_eq!(solved_frame.game_state, GameState::Complete);
+
+        let solved_board = solved_frame.board;
+        assert_eq!(solved_board, complex_expected);
     }
 
     #[test]

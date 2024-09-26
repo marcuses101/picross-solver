@@ -3,6 +3,7 @@ use std::collections::VecDeque;
 use crate::{
     game_board::{GameBoard, GameBoardRow, TileState},
     iterators::PicrossLineIter,
+    render::{GameState, PicrossFrame},
 };
 
 use super::{PicrossGame, PicrossSolver};
@@ -10,7 +11,7 @@ use super::{PicrossGame, PicrossSolver};
 pub struct PicrossSolverV3(pub PicrossGame);
 
 impl PicrossSolver for PicrossSolverV3 {
-    fn solve(&self) -> Result<GameBoard, &'static str> {
+    fn solve(&self) -> Result<PicrossFrame, &'static str> {
         let mut board = GameBoard::new(self.0.width(), self.0.height());
         #[derive(Debug, PartialEq)]
         enum ToCheck {
@@ -20,14 +21,8 @@ impl PicrossSolver for PicrossSolverV3 {
         let mut queue: VecDeque<(ToCheck, usize)> = VecDeque::new();
         (0..self.0.width()).for_each(|col_index| queue.push_back((ToCheck::Column, col_index)));
         (0..self.0.height()).for_each(|row_index| queue.push_back((ToCheck::Row, row_index)));
-        let mut loop_count = 0;
         // populate the rows initially
         while let Some((board_axis, index)) = queue.pop_front() {
-            loop_count += 1;
-            println!(
-                "loop count: {} board axis: {:?} index:{}",
-                loop_count, board_axis, index
-            );
             match board_axis {
                 ToCheck::Row => {
                     let row_index = index;
@@ -101,7 +96,8 @@ impl PicrossSolver for PicrossSolverV3 {
                 .iter()
                 .all(|tile| !matches!(tile, TileState::Undetermined))
         }) {
-            Ok(board)
+            let frame = PicrossFrame::new(self.0.clone(), board, GameState::Complete)?;
+            Ok(frame)
         } else {
             eprintln!("\n-----\nCould not determine:\n{}\n------", board.render());
             Err("Not Complete")

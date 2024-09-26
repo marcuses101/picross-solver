@@ -1,13 +1,33 @@
-use std::cmp;
+use std::{cmp, fmt::Display};
 
 use crate::{
     game_board::GameBoard,
     picross::{AxisRules, LineRule, PicrossGame},
 };
 
-struct PicrossFrame {
+#[derive(PartialEq, Debug)]
+pub enum GameState {
+    #[allow(dead_code)]
+    InProgress,
+    Invalid,
+    Complete,
+}
+
+impl Display for GameState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let output = match self {
+            GameState::InProgress => "In Progress",
+            GameState::Invalid => "Invalid",
+            GameState::Complete => "Complete",
+        };
+        write!(f, "{}", output)
+    }
+}
+
+pub struct PicrossFrame {
+    pub game_state: GameState,
     game: PicrossGame,
-    board: GameBoard,
+    pub board: GameBoard,
 }
 
 fn render_row_line_rule(rule: &LineRule) -> String {
@@ -49,14 +69,22 @@ fn render_column_axis_rules(rules: &AxisRules) -> String {
 }
 
 impl PicrossFrame {
-    pub fn new(game: PicrossGame, board: GameBoard) -> Result<Self, &'static str> {
+    pub fn new(
+        game: PicrossGame,
+        board: GameBoard,
+        game_state: GameState,
+    ) -> Result<Self, &'static str> {
         if game.width() != board.width() || game.height() != board.height() {
             return Err("game dimensions don't match board dimensions");
         }
 
-        Ok(Self { game, board })
+        Ok(Self {
+            game,
+            board,
+            game_state,
+        })
     }
-    fn render(&self) -> String {
+    pub fn render(&self) -> String {
         let row_padding = self.game.rows.0.iter().fold(0, |acc, rule| {
             let width = render_row_line_rule(&rule).len();
             cmp::max(acc, width)
@@ -81,7 +109,10 @@ impl PicrossFrame {
             })
             .collect::<Vec<String>>()
             .join("\n");
-        format!("{}\n{}", column_rules_rendered, rows_and_board)
+        format!(
+            "{}\n\n{}\n{}",
+            self.game_state, column_rules_rendered, rows_and_board
+        )
     }
 }
 
@@ -115,8 +146,9 @@ mod tests {
             GameBoardRow(vec![Filled, Empty, Filled]),
         ]);
         let game = PicrossGame::from_rules("1 1,1,1 1", "1 1,1,1 1").unwrap();
-        let frame = PicrossFrame::new(game, board).unwrap();
-        let expected = "   1   1 
+        let frame = PicrossFrame::new(game, board, GameState::InProgress).unwrap();
+        let expected = "In Progress\n
+   1   1 
    1 1 1 
 1 1██  ██
   1  ██  

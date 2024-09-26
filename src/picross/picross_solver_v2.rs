@@ -1,11 +1,14 @@
-use crate::game_board::{GameBoard, TileState};
+use crate::{
+    game_board::TileState,
+    render::{GameState, PicrossFrame},
+};
 
 use super::{PicrossGame, PicrossSolver};
 
 pub struct PicrossSolverV2(pub PicrossGame);
 
 impl PicrossSolver for PicrossSolverV2 {
-    fn solve(&self) -> Result<GameBoard, &'static str> {
+    fn solve(&self) -> Result<PicrossFrame, &'static str> {
         let mut current_board = self
             .0
             .get_partial_board_from_columns(Some(self.0.get_partial_board_from_rows(None)?))?;
@@ -20,13 +23,11 @@ impl PicrossSolver for PicrossSolverV2 {
                         .iter()
                         .all(|tile| !matches!(tile, TileState::Undetermined))
                 }) {
-                    return Ok(new_board);
+                    let frame = PicrossFrame::new(self.0.clone(), new_board, GameState::Complete)?;
+                    return Ok(frame);
                 } else {
-                    eprintln!(
-                        "\n-----\nCould not determine:\n{}\n------",
-                        new_board.render()
-                    );
-                    return Err("Not Complete");
+                    let frame = PicrossFrame::new(self.0.clone(), new_board, GameState::Invalid)?;
+                    return Ok(frame);
                 }
             } else {
                 current_board = new_board;
