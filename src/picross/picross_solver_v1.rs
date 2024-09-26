@@ -7,7 +7,25 @@ use crate::{
     render::{GameState, PicrossFrame},
 };
 
-use super::{PicrossGame, PicrossSolver};
+use super::{picross_solver_trait::PicrossSolver, PicrossGame};
+
+struct StackEntry {
+    row_iter: Iter<LineRule>,
+    row_layout_iter: Option<PicrossLineIter>,
+    board: GameBoard,
+}
+
+struct SolverV1Iterable {
+    stack: Vec<StackEntry>,
+}
+
+impl Iterator for SolverV1Iterable {
+    type Item = PicrossFrame;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
 
 pub struct PicrossSolverV1(pub PicrossGame);
 
@@ -18,11 +36,6 @@ impl PicrossSolver for PicrossSolverV1 {
     fn solve(&self) -> Result<PicrossFrame, &'static str> {
         let width = self.0.columns.0.len();
 
-        struct StackEntry<'a> {
-            row_iter: Iter<'a, LineRule>,
-            row_layout_iter: Option<PicrossLineIter<'a>>,
-            board: GameBoard,
-        }
         let mut stack = vec![StackEntry {
             row_iter: self.0.rows.0.iter(),
             row_layout_iter: None,
@@ -85,5 +98,16 @@ impl PicrossSolver for PicrossSolverV1 {
 
     fn from_game(game: PicrossGame) -> Self {
         Self(game)
+    }
+
+    type Iter = SolverV1Iterable;
+
+    fn iter(&self) -> Self::Iter {
+        let mut stack = vec![StackEntry {
+            row_iter: self.0.rows.0.iter(),
+            row_layout_iter: None,
+            board: GameBoard(vec![]),
+        }];
+        SolverV1Iterable { stack }
     }
 }

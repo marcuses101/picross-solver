@@ -1,20 +1,20 @@
 use crate::game_board::{GameBoardRow, Segment, TileState};
 
 #[derive(Debug, Clone)]
-pub struct PicrossLineIter<'a> {
+pub struct PicrossLineIter {
     width: usize,
-    stack: Vec<RowIterFrame<'a>>,
+    stack: Vec<RowIterFrame>,
 }
 
 #[derive(Debug, Clone)]
-struct RowIterFrame<'a> {
+struct RowIterFrame {
     index: usize,
     current_solution: Vec<Segment>,
-    remaining_chunks: &'a [usize],
+    remaining_chunks: Vec<usize>,
 }
 
-impl<'a> PicrossLineIter<'a> {
-    pub fn new(chunks: &'a [usize], width: usize) -> Self {
+impl PicrossLineIter {
+    pub fn new(chunks: Vec<usize>, width: usize) -> Self {
         Self {
             width,
             stack: vec![RowIterFrame {
@@ -55,7 +55,7 @@ impl<'a> PicrossLineIter<'a> {
     }
 }
 
-impl Iterator for PicrossLineIter<'_> {
+impl Iterator for PicrossLineIter {
     type Item = GameBoardRow;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -142,7 +142,7 @@ mod tests {
 
     #[test]
     fn test_row_iterator_complex() {
-        let mut row_iter = PicrossLineIter::new(&[2, 1], 5);
+        let mut row_iter = PicrossLineIter::new(vec![2, 1], 5);
 
         assert_eq!(
             row_iter.next().unwrap(),
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_get_partially_solved_row() {
         let width = 10;
-        let mut row_iter = PicrossLineIter::new(&[6], width);
+        let mut row_iter = PicrossLineIter::new(vec![6], width);
         assert_eq!(
             row_iter.get_partially_solved_line(None),
             Ok(GameBoardRow(vec![
@@ -179,7 +179,7 @@ mod tests {
             ]))
         );
 
-        let mut row_iter = PicrossLineIter::new(&[0], width);
+        let mut row_iter = PicrossLineIter::new(vec![0], width);
         assert_eq!(
             row_iter.get_partially_solved_line(None),
             Ok(GameBoardRow(vec![

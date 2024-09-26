@@ -6,18 +6,34 @@ use crate::{
     render::{GameState, PicrossFrame},
 };
 
-use super::{PicrossGame, PicrossSolver};
+use super::{picross_solver_trait::PicrossSolver, PicrossGame};
+
+#[derive(Debug, PartialEq)]
+enum ToCheck {
+    Row,
+    Column,
+}
+
+struct V3Iterator {
+    queue: VecDeque<(ToCheck, usize)>,
+    current_board: GameBoard,
+    game: PicrossGame,
+    is_complete: bool,
+}
+
+impl Iterator for V3Iterator {
+    type Item: PicrossFrame;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        todo!()
+    }
+}
 
 pub struct PicrossSolverV3(pub PicrossGame);
 
 impl PicrossSolver for PicrossSolverV3 {
     fn solve(&self) -> Result<PicrossFrame, &'static str> {
         let mut board = GameBoard::new(self.0.width(), self.0.height());
-        #[derive(Debug, PartialEq)]
-        enum ToCheck {
-            Row,
-            Column,
-        }
         let mut queue: VecDeque<(ToCheck, usize)> = VecDeque::new();
         (0..self.0.width()).for_each(|col_index| queue.push_back((ToCheck::Column, col_index)));
         (0..self.0.height()).for_each(|row_index| queue.push_back((ToCheck::Row, row_index)));
@@ -28,7 +44,7 @@ impl PicrossSolver for PicrossSolverV3 {
                     let row_index = index;
                     // maybe rethink this...
                     let rules = &self.0.rows.0.get(index).ok_or("failed to get row rules")?;
-                    let mut line_iter = PicrossLineIter::new(&rules.0, self.0.width());
+                    let mut line_iter = PicrossLineIter::new(rules.0.clone(), self.0.width());
                     let board_row = board
                         .0
                         .get_mut(row_index)
@@ -63,7 +79,7 @@ impl PicrossSolver for PicrossSolverV3 {
                         .0
                         .get(col_index)
                         .ok_or("failed to get col rules")?;
-                    let mut line_iter = PicrossLineIter::new(&rules.0, self.0.height());
+                    let mut line_iter = PicrossLineIter::new(rules.0.clone(), self.0.height());
                     let board_col = GameBoardRow(board.get_column(col_index));
                     let solved_col = line_iter.get_partially_solved_line(Some(&board_col))?;
                     for (row_index, tile) in board_col.0.iter().enumerate() {
@@ -110,5 +126,11 @@ impl PicrossSolver for PicrossSolverV3 {
 
     fn set_game(&mut self, game: PicrossGame) {
         self.0 = game;
+    }
+
+    type Iter = V3Iterator;
+
+    fn iter(&self) -> Self::Iter {
+        todo!()
     }
 }

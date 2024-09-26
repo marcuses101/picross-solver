@@ -1,10 +1,10 @@
 use crate::{
     game_board::{GameBoard, GameBoardRow},
     iterators::PicrossLineIter,
-    render::PicrossFrame,
 };
 use std::str::FromStr;
 
+pub mod picross_solver_trait;
 pub mod picross_solver_v1;
 pub mod picross_solver_v2;
 pub mod picross_solver_v3;
@@ -128,12 +128,6 @@ fn validate_board(game: &PicrossGame, board: &GameBoard) -> Result<BoardState, &
         }
     }
     Ok(board_state)
-}
-
-pub trait PicrossSolver {
-    fn solve(&self) -> Result<PicrossFrame, &'static str>;
-    fn from_game(game: PicrossGame) -> Self;
-    fn set_game(&mut self, game: PicrossGame);
 }
 
 impl Default for PicrossGame {
